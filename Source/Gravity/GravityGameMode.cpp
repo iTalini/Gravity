@@ -20,7 +20,7 @@ AGravityGameMode::AGravityGameMode() : Super()
 	{
 		DefaultPawnClass = PlayerPawnBPClass.Class;
 	}
-
+	last_spawn = -1;
 }
 
 void AGravityGameMode::OnSphereDestroyed(AScoreSpheres* A_Sphere)
@@ -33,21 +33,13 @@ void AGravityGameMode::OnSphereDestroyed(AScoreSpheres* A_Sphere)
 			InGameHUD->NewMessage(FString("You end the game!!!"), 5.0f, FLinearColor::Yellow);
 		GetWorld()->GetTimerManager().SetTimer(MessageKillTimerHandle, this, &AGravityGameMode::EndGame, 5.5f, true);
 	}
+	else
+		SpawnOdject();
 }
 
 int AGravityGameMode::Get_Score()
 {
 	return score;
-}
-
-void AGravityGameMode::Add_Score(int input)
-{
-	score += input;
-	AMyHUD* InGameHUD = Cast<AMyHUD>(GetWorld()->GetFirstPlayerController()->GetHUD());
-	if (InGameHUD)
-		InGameHUD->UpdateScore(score);
-	if (amount_spheres != 0)
-		SpawnOdject();
 }
 
 void AGravityGameMode::EndGame()
@@ -97,43 +89,52 @@ void AGravityGameMode::Go()
 	SpawnOdject();
 }
 
+void AGravityGameMode::SpawnOdject()
+{
+	if (amount_spheres != 0)
+	{
+		TArray <AActor*> TA_Spawners;
+
+		UGameplayStatics::GetAllActorsOfClass(this, ASpawnActor::StaticClass(), TA_Spawners);
+
+		int amount_spawner = TA_Spawners.Num() - 1;
+		if (amount_spawner > 0)
+		{
+			amount_spawner = FMath::RandRange(0, amount_spawner);
+			while (amount_spawner == last_spawn)
+				amount_spawner = FMath::RandRange(0, amount_spawner);
+
+			last_spawn = amount_spawner;
+		}
+
+		if (TA_Spawners.IsValidIndex(amount_spawner))
+		{
+			ASpawnActor* Spawner = Cast<ASpawnActor>(TA_Spawners[amount_spawner]);
+
+			FActorSpawnParameters SpawnParam;
+			if (Spawner)
+			{
+				AActor* SpawnedActorRef = GetWorld()->SpawnActor<AActor>(ActorToSpawn, Spawner->GetActorLocation(), Spawner->GetActorRotation(), SpawnParam);
+				TArray <AActor*> TA_Spheres;
+
+				UGameplayStatics::GetAllActorsOfClass(this, AScoreSpheres::StaticClass(), TA_Spheres);
+				for (AActor* A_Sphere : TA_Spheres)
+				{
+					AScoreSpheres* ScoreSphere = Cast<AScoreSpheres>(A_Sphere);
+					if (ScoreSphere)
+					{
+						ScoreSphere->SphereDisapear.AddUFunction(this, "OnSphereDestroyed", ScoreSphere);
+					}
+				}
+			}
+		}
+	}
+}
+
 void AGravityGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 
 	//GameStart();
 	Go();
-}
-
-void AGravityGameMode::SpawnOdject()
-{
-	TArray <AActor*> TA_Spawners;
-
-	UGameplayStatics::GetAllActorsOfClass(this, ASpawnActor::StaticClass(), TA_Spawners);
-
-	int amount_spawner = TA_Spawners.Num() - 1;
-	amount_spawner = FMath::RandRange(0, amount_spawner);
-	while (amount_spawner == last_spawn)
-		amount_spawner = FMath::RandRange(0, amount_spawner);
-
-	last_spawn = amount_spawner;
-
-	ASpawnActor* Spawner = Cast<ASpawnActor>(TA_Spawners[amount_spawner]);
-
-	FActorSpawnParameters SpawnParam;
-	if (Spawner)
-	{
-		AActor* SpawnedActorRef = GetWorld()->SpawnActor<AActor>(ActorToSpawn, Spawner->GetActorLocation(), Spawner->GetActorRotation(), SpawnParam);
-		TArray <AActor*> TA_Spheres;
-
-		UGameplayStatics::GetAllActorsOfClass(this, AScoreSpheres::StaticClass(), TA_Spheres);
-		for (AActor* A_Sphere : TA_Spheres)
-		{
-			AScoreSpheres* ScoreSphere = Cast<AScoreSpheres>(A_Sphere);
-			if (ScoreSphere)
-			{
-				ScoreSphere->SphereDisapear.AddUFunction(this, "OnSphereDestroyed", ScoreSphere);
-			}
-		}
-	}
 }

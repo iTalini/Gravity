@@ -30,7 +30,7 @@ public:
 
 	bool changeMat;
 
-	//by what value the material wiil change in tick
+	//by what value the material will change in tick
 	float for_changeMat;
 
 	//during this time wouldn't end the character could take max score
@@ -39,6 +39,8 @@ public:
 
 protected:
 	int amount_sphere;
+
+	bool hit;
 
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;

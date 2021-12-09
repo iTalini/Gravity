@@ -22,6 +22,7 @@ public:
 
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 
+	UFUNCTION()
 	void UpdateScoreInWidget(int32 score);
 
 	FTimerHandle MessageKillTimerHandle;

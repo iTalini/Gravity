@@ -5,6 +5,7 @@
 #include "Materials/MaterialInstanceDynamic.h"
 #include "TimerManager.h"
 #include "GravityGameMode.h"
+#include "MyCharacter.h"
 #include "Runtime/CoreUObject/Public/UObject/ConstructorHelpers.h"
 
 // Sets default values
@@ -29,12 +30,22 @@ AScoreSpheres::AScoreSpheres()
 		StatMaterial = MatToUse.Object;
 	}
 
-	Body->OnComponentHit.AddDynamic(this, &AScoreSpheres::OnComponentHit);
+	if (GetLocalRole() == ROLE_Authority)
+		Body->OnComponentHit.AddDynamic(this, &AScoreSpheres::OnComponentHit);
+	
 	changeMat = false;
 	for_changeMat = 0.0f;
 	amount_sphere = 1000;
 
 	time_for_maxscore = 20.0f;
+
+	//Replication
+	SetRemoteRoleForBackwardsCompat(ROLE_SimulatedProxy);
+	bReplicates = true;
+	SetReplicatingMovement(true);
+
+	hit = false;
+	//bReplicateMovement = true;
 }
 
 void AScoreSpheres::BeginPlay()
@@ -54,11 +65,20 @@ void AScoreSpheres::BeginPlay()
 
 void AScoreSpheres::OnComponentHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	if (SphereDisapear.IsBound())
-		SphereDisapear.Broadcast();
-	AGravityGameMode* const MyMode = GetWorld()->GetAuthGameMode<AGravityGameMode>();
-	MyMode->Add_Score(amount_sphere);
-	Destroy();
+	if (hit == false)
+	{
+		hit = true;
+		if (SphereDisapear.IsBound())
+			SphereDisapear.Broadcast();
+
+		AMyCharacter* HitPerson = Cast<AMyCharacter>(OtherActor);
+
+		HitPerson->AddToScore(amount_sphere);
+		//AGravityGameMode* const MyMode = GetWorld()->GetAuthGameMode<AGravityGameMode>();
+		//MyMode->OnSphereDestroyed(this);
+		Destroy();
+
+	}
 }
 
 void AScoreSpheres::ChangeMaterial()

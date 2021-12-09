@@ -7,6 +7,9 @@
 #include "Components/CapsuleComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/InputComponent.h"
+#include "ScoreSpheres.h"
+#include "Net/UnrealNetwork.h"
+#include "MyHUD.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
@@ -31,7 +34,7 @@ AMyCharacter::AMyCharacter()
 	GetCharacterMovement()->bOrientRotationToMovement = true; // Character moves in the direction of input...	
 	GetCharacterMovement()->RotationRate = FRotator(0.0f, 540.0f, 0.0f); // ...at this rotation rate
 	GetCharacterMovement()->JumpZVelocity = 600.f;
-	GetCharacterMovement()->AirControl = 0.2f;//0.2f стояло до, попробовать!!!!!!!!!!!!!!!!!можно удалить комент
+	GetCharacterMovement()->AirControl = 0.2f;
 	GetCharacterMovement()->AirControlBoostMultiplier = 0.0f;
 	GetCharacterMovement()->AirControlBoostVelocityThreshold = 100.f;
 	GetCharacterMovement()->FallingLateralFriction = 100.f;
@@ -57,6 +60,8 @@ AMyCharacter::AMyCharacter()
 	InputDir->SetArrowColor(FLinearColor::Yellow);
 	InputDir->SetupAttachment(GetCapsuleComponent());
 
+	Score = 0;
+
 	ReadyForGravState = false;
 	Gravit_line_trace = false;
 	check_grav = false;
@@ -65,6 +70,7 @@ AMyCharacter::AMyCharacter()
 	f_force = 0;
 
 	jumping = false;
+
 
 }
 
@@ -78,6 +84,44 @@ void AMyCharacter::BeginPlay()
 	Set_ReadyPress(false);
 
 }
+
+
+void AMyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	DOREPLIFETIME(AMyCharacter, Score);
+}
+
+void AMyCharacter::OnRep_Score()
+{
+//	UE_LOG(LogTemp, Warning, TEXT("OnRep_score"));
+	PrintScore_Implementation();
+/*	if (GetLocalRole() == ROLE_Authority)
+	{
+		const FString ScoreMessege = FString::Printf(TEXT("Person score = %f"), Score);
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Black, ScoreMessege);
+	}*/
+
+}
+
+void AMyCharacter::PrintScore_Implementation()
+{
+	/*AMyHUD* InGameHUD = Cast<AMyHUD>(GetWorld()->GetFirstPlayerController()->GetHUD());
+	if (InGameHUD)
+		InGameHUD->UpdateScore(Score);*/
+		UE_LOG(LogTemp, Warning, TEXT("added to score"));
+		const FString ScoreMessege = FString::Printf(TEXT("My score = %f"), Score);
+		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Black, ScoreMessege);
+		if (IsLocallyControlled())//???????????????????????????????????????????????????????????????????????
+		{
+			AMyHUD* InGameHUD = Cast<AMyHUD>(GetWorld()->GetFirstPlayerController()->GetHUD());
+			if (InGameHUD)
+				InGameHUD->UpdateScore(Score);
+		}
+}
+
+
 
 // Called every frame
 void AMyCharacter::Tick(float DeltaTime)
@@ -122,9 +166,10 @@ void AMyCharacter::ControlGrav(float outvalue)
 {
 	FQuat NewRotate = FQuat(FRotator(GetActorRotation().Pitch, GetActorRotation().Yaw, outvalue));
 	SetActorRotation(NewRotate);
-	
-	//f_force = 11.0f * -25000.0f;
-	f_force = 337000.0f;
+	//GetCharacterMovement()->SetGra
+
+	//f_force = 11.0f * -25000.0f;337000
+	SetF_Force(337000.0f);
 	
 	
 	//rotate camera with person
@@ -134,12 +179,48 @@ void AMyCharacter::ControlGrav(float outvalue)
 	FollowCamera->SetWorldRotation(NewCameraRotation);*/
 }
 
+void AMyCharacter::SetF_Force(float input)
+{
+	if (GetLocalRole() == ROLE_Authority)
+		f_force = input;
+}
+
+void AMyCharacter::AddToScore(float add)
+{
+	if (GetLocalRole() == ROLE_Authority)
+		Score += add;
+}
+
+void AMyCharacter::Set_CheckGrav(bool input)
+{
+	if (GetLocalRole() == ROLE_Authority)
+		check_grav = input;
+}
+
+void AMyCharacter::Set_GravLineTrace(bool input)
+{
+	if (GetLocalRole() == ROLE_Authority)
+		ReadyForGravState = input;
+}
+
+void AMyCharacter::Set_ReadyPress(bool input)
+{
+	if (GetLocalRole() == ROLE_Authority)
+		ReadyPress = input;
+}
+
+void AMyCharacter::Set_WasPress(bool input)
+{
+	if (GetLocalRole() == ROLE_Authority)
+	{ WasPress = input; }
+}
+
 
 
 void AMyCharacter::ArrowRot()
 {
 	float newZ = GetMesh()->GetAnimInstance()->CalculateDirection(GetVelocity(), GetActorRotation());
-	InputDir->SetRelativeRotation(FRotator(0.0f, newZ, 0.0f));
+	InputDir->SetWorldRotation(FRotator(0.0f, newZ, 0.0f));
 	ControllerDir->SetWorldRotation(FRotator(0.0f, GetControlRotation().Yaw, 0.0f));
 }
 
@@ -257,46 +338,6 @@ void AMyCharacter::LookUpAtRate(float Rate)
 {
 	// calculate delta for this frame from the rate information
 	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
-}
-
-void AMyCharacter::Set_CheckGrav(bool input) 
-{
-	check_grav = input;
-}
-
-bool AMyCharacter::Get_CheckGrav()
-{
-	return check_grav;
-}
-
-void AMyCharacter::Set_GravLineTrace(bool input)
-{
-	ReadyForGravState = input;
-}
-
-bool AMyCharacter::Get_GravLineTrace()
-{
-	return ReadyForGravState;
-}
-
-void AMyCharacter::Set_ReadyPress(bool input)
-{
-	ReadyPress = input;
-}
-
-bool AMyCharacter::Get_ReadyPress()
-{
-	return ReadyPress;
-}
-
-void AMyCharacter::Set_WasPress(bool input)
-{
-	WasPress = input;
-}
-
-bool AMyCharacter::Get_WasPress()
-{
-	return WasPress;
 }
 
 void AMyCharacter::Up()

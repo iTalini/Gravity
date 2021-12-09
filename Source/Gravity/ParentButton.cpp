@@ -69,10 +69,8 @@ void AParentButton::BeginPlay()
 }
 
 void AParentButton::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
-	int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
-{
-	UE_LOG(LogTemp, Warning, TEXT("Start Overlap"));
-	
+	int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)//Не меняется
+{	
 	if (Player)
 	{
 		CanPress = true;
@@ -81,28 +79,23 @@ void AParentButton::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* 
 }
 
 void AParentButton::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
-{
-	UE_LOG(LogTemp, Warning, TEXT("End Overlap"));
-	
+{	
 	if (Player)
 	{
 		Player->Set_ReadyPress(false);
 	}
 }
 
-void AParentButton::Shock()
+void AParentButton::Shock()//Не меняется
 {
-	UE_LOG(LogTemp, Warning, TEXT("Shock"));
 	if (Player)
 		Player->Set_WasPress(false);
 	CurveTimeline.PlayFromStart();
 	CanPress = false;
 }
 
-void AParentButton::TimelineFinish()
-{
-	UE_LOG(LogTemp, Warning, TEXT("ShockEnd"));
-	
+void AParentButton::TimelineFinish()//Не меняется
+{	
 	if (Player)
 		Player->Set_WasPress(false);
 }
@@ -113,7 +106,7 @@ void AParentButton::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
-void AParentButton::TimelineProgress(float input)
+void AParentButton::TimelineProgress(float input)//Не меняется
 {
 	//UE_LOG(LogTemp, Warning, TEXT("TimelineProgress"));
 
@@ -121,12 +114,12 @@ void AParentButton::TimelineProgress(float input)
 	MovePart->SetRelativeLocation(output);
 }
 
-bool AParentButton::Get_CanPress()
+bool AParentButton::Get_CanPress()//Не меняется
 {
 	return(CanPress);
 }
 
-void AParentButton::Set_CanPress(bool input)
+void AParentButton::Set_CanPress(bool input)//Не меняется
 {
 	CanPress = input;
 }

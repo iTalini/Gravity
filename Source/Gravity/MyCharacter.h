@@ -8,6 +8,7 @@
 #include "Components/ArrowComponent.h"
 #include "Components/TimelineComponent.h"
 #include "Math/Vector.h"
+#include "MyHUD.h"
 #include "GameFramework/Actor.h"
 #include "MyCharacter.generated.h"
 
@@ -61,10 +62,10 @@ public:
 
 	bool ReadyForGravState;
 
-	float f_force;
-
 	bool check_grav;// Для анимации
 	bool Gravit_line_trace;
+
+	virtual void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const override;
 
 
 protected:
@@ -74,7 +75,18 @@ protected:
 	UPROPERTY(EditAnywhere, Category = "ButtonPress")
 		bool WasPress;
 
+	UPROPERTY(ReplicatedUsing = OnRep_Score)
+		float Score;
+
+	UFUNCTION()
+		virtual void OnRep_Score();
+
+	UFUNCTION(Client, Reliable)
+	void PrintScore();
+
 	bool jumping;
+
+	float f_force;
 
 public:
 	// Called every frame
@@ -84,31 +96,38 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void ControlGrav(float outvalue);
 
+	UFUNCTION(BlueprintPure)
+		FORCEINLINE float GetF_Force() const { return f_force; }
 
+	UFUNCTION(BlueprintCallable)
+		void SetF_Force(float input);
+
+	UFUNCTION(BlueprintCallable)
+		void AddToScore(float add);
 
 	UFUNCTION(BlueprintCallable)
 		void Set_CheckGrav(bool input);
 
-	UFUNCTION(BlueprintCallable)
-		bool Get_CheckGrav();
+	UFUNCTION(BlueprintPure)
+		FORCEINLINE bool Get_CheckGrav() const { return check_grav; }
 
 	UFUNCTION(BlueprintCallable)
 		void Set_GravLineTrace(bool input);
 
-	UFUNCTION(BlueprintCallable)
-		bool Get_GravLineTrace();
+	UFUNCTION(BlueprintPure)
+		FORCEINLINE bool Get_GravLineTrace() const { return ReadyForGravState; }
 
 	UFUNCTION(BlueprintCallable)
-	void Set_ReadyPress(bool input);
+		void Set_ReadyPress(bool input);
 	
-	UFUNCTION(BlueprintCallable)
-	bool Get_ReadyPress();
+	UFUNCTION(BlueprintPure)
+		FORCEINLINE bool Get_ReadyPress() const { return ReadyPress; }
 
 	UFUNCTION(BlueprintCallable)
 		void Set_WasPress(bool input);
 
-	UFUNCTION(BlueprintCallable)
-		bool Get_WasPress();
+	UFUNCTION(BlueprintPure)
+		FORCEINLINE bool Get_WasPress() const { return WasPress; }
 
 	UFUNCTION(BlueprintCallable)
 		void Up();
@@ -119,6 +138,7 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+
 
 	UFUNCTION(BlueprintCallable)
 		FVector CalcInputDirForw();

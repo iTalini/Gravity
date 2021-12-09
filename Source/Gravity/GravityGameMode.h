@@ -19,8 +19,7 @@ public:
 		void OnSphereDestroyed(AScoreSpheres* A_Sphere);
 	UFUNCTION(BlueprintCallable)
 		int Get_Score();
-	UFUNCTION(BlueprintCallable)
-		void Add_Score(int input);
+
 	UFUNCTION(BlueprintCallable)
 		void EndGame();
 
@@ -35,6 +34,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 		void Go();
 
+	UFUNCTION()
+		void SpawnOdject();
+
 	FTimerHandle MessageKillTimerHandle;
 
 	UPROPERTY(EditAnywhere, Category = ScoreSpheres)
@@ -46,9 +48,6 @@ public:
 
 protected:
 	virtual void BeginPlay() override;
-
-	UFUNCTION()
-		void SpawnOdject();
 
 	int score;
 
