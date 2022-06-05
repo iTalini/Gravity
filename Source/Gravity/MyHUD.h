@@ -22,14 +22,14 @@ public:
 	void BeginPlay();
 
 	UFUNCTION()
-		void UpdateScore(int score);
+	void UpdateScore(int score);
 
 	UFUNCTION()
-		void NewMessage(FString text, float time, FLinearColor textcolor);
+	void NewMessage(FString text, float time, FLinearColor textcolor);
 
 	UPROPERTY(EditDefaultsOnly, Category = "Widget")
-		TSubclassOf<class UUserWidget> WidgetTemplate;
+	TSubclassOf<class UUserWidget> WidgetTemplate;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Widget")
-		UMyUserWidget* WidgetInstance;
-	
+	UMyUserWidget* WidgetInstance;
 };

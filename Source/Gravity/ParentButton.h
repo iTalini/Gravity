@@ -10,6 +10,8 @@
 #include "Curves/CurveFloat.h"
 #include "ParentButton.generated.h"
 
+class AMyCharacter;
+
 UCLASS()
 class GRAVITY_API AParentButton : public AActor
 {
@@ -18,6 +20,8 @@ class GRAVITY_API AParentButton : public AActor
 public:	
 	// Sets default values for this actor's properties
 	AParentButton();
+
+	virtual void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const;
 
 	UPROPERTY(VisibleDefaultsOnly, Category = ButtonPart)
 	UStaticMeshComponent* ButtonBody;
@@ -28,52 +32,57 @@ public:
 	UPROPERTY(VisibleDefaultsOnly, Category = ButtonPart)
 	UStaticMeshComponent* CollisionPart;
 
-	//UPROPERTY(VisibleDefaultsOnly, Category = Curvel)
-	//UCurveFloat* CF_PressButton;
+	UFUNCTION(BlueprintCallable)
+	void InitializeCF_PressButton();
+
+	UFUNCTION()
+	void OnRep_ButtonReaction();
+
+	UFUNCTION()
+	void TryPressButton();
 	
 
 protected:
 	FTimeline CurveTimeline;
 
 	UPROPERTY(VisibleDefaultsOnly, Category = Timeline)
-		UCurveFloat* CF_PressButton;
+	UCurveFloat* CF_PressButton;
 
-	UPROPERTY()
-		FVector StartLoc;
-	UPROPERTY()
-		FVector EndLoc;
-	//UPROPERTY(VisibleDefaultsOnly, Category = Timeline)
-	//	float ZOffset;
-	UPROPERTY()
-		bool CanPress;
+	float PressValue;
 
-	UPROPERTY()
-		AMyCharacter* Player;
+	float CurveFloatValue;
+
+	float TimelineValue;
+
+
+	UPROPERTY(ReplicatedUsing = OnRep_ButtonReaction)
+	bool bReadyState;
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_TryPressButton();
 
 public:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 	UFUNCTION()
-		virtual void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
+	virtual void OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
 			int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult);
 
 	UFUNCTION()
-		virtual void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
+	virtual void OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
 			int32 OtherBodyIndex);
 
-	UFUNCTION(BlueprintCallable)//for_jock
-		virtual void Shock();
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 	UFUNCTION(BlueprintCallable)
-		virtual void TimelineProgress(float input);
+	void TimelineProgress();
 	UFUNCTION(BlueprintCallable)
-		virtual void TimelineFinish();
+	void TimelineFinish();
 
 	UFUNCTION(BlueprintCallable)
-		virtual bool Get_CanPress();
+	bool Get_ReadyStat();
 	UFUNCTION(BlueprintCallable)
-		virtual void Set_CanPress(bool input);
+	void Set_ReadyStat(bool input);
 };

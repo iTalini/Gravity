@@ -28,29 +28,29 @@ public:
 	UMaterialInstanceDynamic* DynMat;
 
 
-	bool changeMat;
+	bool bChangeMat;
 
 	//by what value the material will change in tick
 	float for_changeMat;
 
 	//during this time wouldn't end the character could take max score
 	UPROPERTY(EditAnywhere, Category = Time)
-		float time_for_maxscore;
+	float time_for_maxscore;
 
 protected:
 	int amount_sphere;
 
-	bool hit;
+	bool bHit;
 
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 	UFUNCTION()
-		void OnComponentHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
+	void OnComponentHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit);
 
 	//function set changeMat = true
 	UFUNCTION(BlueprintCallable)
-		void ChangeMaterial();
+	void ChangeMaterial();
 
 public:	
 	// Called every frame

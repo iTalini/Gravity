@@ -21,6 +21,7 @@ AGravityGameMode::AGravityGameMode() : Super()
 		DefaultPawnClass = PlayerPawnBPClass.Class;
 	}
 	last_spawn = -1;
+	amount_spheres = 5;
 }
 
 void AGravityGameMode::OnSphereDestroyed(AScoreSpheres* A_Sphere)
@@ -44,49 +45,7 @@ int AGravityGameMode::Get_Score()
 
 void AGravityGameMode::EndGame()
 {
-	//FGenericPlatformMisc::RequestExit(false);
-
 	GetWorld()->GetFirstPlayerController()->ConsoleCommand("quit");
-}
-
-void AGravityGameMode::GameStart()
-{
-	AMyHUD* InGameHUD = Cast<AMyHUD>(GetWorld()->GetFirstPlayerController()->GetHUD());
-	if (InGameHUD)
-		InGameHUD->NewMessage(FString("Game start in..."), 1.0f, FLinearColor::Red);
-	GetWorld()->GetTimerManager().SetTimer(MessageKillTimerHandle, this, &AGravityGameMode::Three, 1.0f, false);
-}
-
-void AGravityGameMode::Three()
-{
-	AMyHUD* InGameHUD = Cast<AMyHUD>(GetWorld()->GetFirstPlayerController()->GetHUD());
-	if (InGameHUD)
-		InGameHUD->NewMessage(FString("3"), 1.0f, FLinearColor::Red);
-	GetWorld()->GetTimerManager().SetTimer(MessageKillTimerHandle, this, &AGravityGameMode::Two, 1.0f, false);
-}
-
-void AGravityGameMode::Two()
-{
-	AMyHUD* InGameHUD = Cast<AMyHUD>(GetWorld()->GetFirstPlayerController()->GetHUD());
-	if (InGameHUD)
-		InGameHUD->NewMessage(FString("2"), 1.0f, FLinearColor::Red);
-	GetWorld()->GetTimerManager().SetTimer(MessageKillTimerHandle, this, &AGravityGameMode::One, 1.0f, false);
-}
-
-void AGravityGameMode::One()
-{
-	AMyHUD* InGameHUD = Cast<AMyHUD>(GetWorld()->GetFirstPlayerController()->GetHUD());
-	if (InGameHUD)
-		InGameHUD->NewMessage(FString("1"), 1.0f, FLinearColor::Red);
-	GetWorld()->GetTimerManager().SetTimer(MessageKillTimerHandle, this, &AGravityGameMode::Go, 1.0f, false);
-}
-
-void AGravityGameMode::Go()
-{
-	AMyHUD* InGameHUD = Cast<AMyHUD>(GetWorld()->GetFirstPlayerController()->GetHUD());
-	if (InGameHUD)
-		InGameHUD->NewMessage(FString("GO!!!"), 1.0f, FLinearColor::Green);
-	SpawnOdject();
 }
 
 void AGravityGameMode::SpawnOdject()
@@ -135,6 +94,5 @@ void AGravityGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 
-	//GameStart();
-	Go();
+	SpawnOdject();
 }

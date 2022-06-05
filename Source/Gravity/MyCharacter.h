@@ -12,6 +12,8 @@
 #include "GameFramework/Actor.h"
 #include "MyCharacter.generated.h"
 
+class AParentButton;
+
 
 UCLASS(config = Game)
 class AMyCharacter : public ACharacter
@@ -24,116 +26,136 @@ public:
 
 	/** Camera boom positioning the camera behind the character */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-		class USpringArmComponent* CameraBoom;
+	class USpringArmComponent* CameraBoom;
 
 	/** Follow camera */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
-		class UCameraComponent* FollowCamera;
+	class UCameraComponent* FollowCamera;
 
 	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
-		float BaseTurnRate;
+	float BaseTurnRate;
 
 	/** Base look up/down rate, in deg/sec. Other scaling may affect final rate. */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera)
-		float BaseLookUpRate;
+	float BaseLookUpRate;
 
 
 	UPROPERTY(VisibleDefaultsOnly, Category = Arrow)
-		class UArrowComponent* ControllerDir;
+	class UArrowComponent* ControllerDir;
 
 	UPROPERTY(VisibleDefaultsOnly, Category = Arrow)
-		UArrowComponent* InputDir;
+	UArrowComponent* InputDir;
 
 
 
 	//For curve timeline
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)//for second variable
-		UTimelineComponent* GraviTimelineComp;
+	UTimelineComponent* GraviTimelineComp;
+
 	/*The initial location of the actor*/
 	FVector ActorInitialLocation;
+
 	/*The target location which is based on the max bounce height*/
 	FVector TargetLocation;
+
 	/*Curve float reference*/
 	UPROPERTY(EditAnywhere, Category = "Timeline")
-		UCurveFloat* CurveFloat;
+	UCurveFloat* CurveFloat;
 
 
+	UPROPERTY(ReplicatedUsing = OnRep_Set_GravLineTrace)
+	bool bReadyForGravState;
 
-	bool ReadyForGravState;
+	UPROPERTY(ReplicatedUsing = OnRep_Set_CheckGrav)
+	bool bCheckGrav;// For animation
 
-	bool check_grav;// Для анимации
-	bool Gravit_line_trace;
+	bool bGravit_line_trace;
+
+	bool bIsUp;
 
 	virtual void GetLifetimeReplicatedProps(TArray< FLifetimeProperty >& OutLifetimeProps) const override;
 
+	UFUNCTION()
+	void SetCurrentButton(AParentButton* NewCurrentButton);
+	UFUNCTION(BlueprintCallable)
+	FORCEINLINE AParentButton* GetCurrentButton() { return CurrentButton; }
 
 protected:
-	UPROPERTY(EditAnywhere, Category = "ButtonPress")
-		bool ReadyPress;
-
-	UPROPERTY(EditAnywhere, Category = "ButtonPress")
-		bool WasPress;
 
 	UPROPERTY(ReplicatedUsing = OnRep_Score)
-		float Score;
-
-	UFUNCTION()
-		virtual void OnRep_Score();
+	float Score;
 
 	UFUNCTION(Client, Reliable)
 	void PrintScore();
 
+	void OnInteract();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void Server_OnInteract();
+
 	bool jumping;
 
 	float f_force;
+
+	UPROPERTY()
+	AParentButton* CurrentButton;
+
+	//GravCurve
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Curve)
+	UCurveFloat* ChangeGravCurve;
+
+	float CurveFloatValue;
+
+	float TimelineValue;
+
+	FTimeline ChangeGravTimeline;
 
 public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 
-	UFUNCTION(BlueprintCallable)
-		void ControlGrav(float outvalue);
+	UFUNCTION()
+	void OnRep_Score();
 
 	UFUNCTION(BlueprintPure)
-		FORCEINLINE float GetF_Force() const { return f_force; }
+	FORCEINLINE float GetF_Force() const { return f_force; }
 
 	UFUNCTION(BlueprintCallable)
-		void SetF_Force(float input);
+	void SetF_Force(float input);
 
 	UFUNCTION(BlueprintCallable)
-		void AddToScore(float add);
+	void AddToScore(float add);
 
 	UFUNCTION(BlueprintCallable)
-		void Set_CheckGrav(bool input);
+	void OnRep_Set_CheckGrav(bool input);
 
 	UFUNCTION(BlueprintPure)
-		FORCEINLINE bool Get_CheckGrav() const { return check_grav; }
+	FORCEINLINE bool Get_CheckGrav() const { return bCheckGrav; }
 
 	UFUNCTION(BlueprintCallable)
-		void Set_GravLineTrace(bool input);
+	void OnRep_Set_GravLineTrace(bool input);
 
 	UFUNCTION(BlueprintPure)
-		FORCEINLINE bool Get_GravLineTrace() const { return ReadyForGravState; }
+	FORCEINLINE bool Get_GravLineTrace() const { return bReadyForGravState; }
+
 
 	UFUNCTION(BlueprintCallable)
-		void Set_ReadyPress(bool input);
-	
-	UFUNCTION(BlueprintPure)
-		FORCEINLINE bool Get_ReadyPress() const { return ReadyPress; }
+	void Up();
 
 	UFUNCTION(BlueprintCallable)
-		void Set_WasPress(bool input);
-
-	UFUNCTION(BlueprintPure)
-		FORCEINLINE bool Get_WasPress() const { return WasPress; }
+	void Down();
 
 	UFUNCTION(BlueprintCallable)
-		void Up();
+	void InitializeGravCurve();
 
 	UFUNCTION(BlueprintCallable)
-		void Down();
+	void TimelineProgress();
+
+	UFUNCTION(BlueprintCallable)
+	void TimelineFinish();
 
 protected:
 	// Called when the game starts or when spawned
@@ -141,10 +163,10 @@ protected:
 
 
 	UFUNCTION(BlueprintCallable)
-		FVector CalcInputDirForw();
+	FVector CalcInputDirForw();
 
 	UFUNCTION(BlueprintCallable)
-		FVector CalcInputDirRight();
+	FVector CalcInputDirRight();
 
 
 	void ArrowRot();

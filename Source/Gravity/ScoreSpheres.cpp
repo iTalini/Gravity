@@ -33,19 +33,17 @@ AScoreSpheres::AScoreSpheres()
 	if (GetLocalRole() == ROLE_Authority)
 		Body->OnComponentHit.AddDynamic(this, &AScoreSpheres::OnComponentHit);
 	
-	changeMat = false;
+	bChangeMat = false;
 	for_changeMat = 0.0f;
 	amount_sphere = 1000;
 
 	time_for_maxscore = 20.0f;
 
-	//Replication
 	SetRemoteRoleForBackwardsCompat(ROLE_SimulatedProxy);
 	bReplicates = true;
 	SetReplicatingMovement(true);
 
-	hit = false;
-	//bReplicateMovement = true;
+	bHit = false;
 }
 
 void AScoreSpheres::BeginPlay()
@@ -65,37 +63,35 @@ void AScoreSpheres::BeginPlay()
 
 void AScoreSpheres::OnComponentHit(UPrimitiveComponent* HitComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, FVector NormalImpulse, const FHitResult& Hit)
 {
-	if (hit == false)
+	if (bHit == false)
 	{
-		hit = true;
+		bHit = true;
 		if (SphereDisapear.IsBound())
 			SphereDisapear.Broadcast();
 
 		AMyCharacter* HitPerson = Cast<AMyCharacter>(OtherActor);
 
 		HitPerson->AddToScore(amount_sphere);
-		//AGravityGameMode* const MyMode = GetWorld()->GetAuthGameMode<AGravityGameMode>();
-		//MyMode->OnSphereDestroyed(this);
-		Destroy();
 
+		Destroy();
 	}
 }
 
 void AScoreSpheres::ChangeMaterial()
 {
-	changeMat = true;
+	bChangeMat = true;
 }
 
 void AScoreSpheres::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	if (changeMat)
+	if (bChangeMat)
 	{
 		DynMat->SetVectorParameterValue("EmissiveColor", FLinearColor::LerpUsingHSV(FColor::FromHex("BDA800FF"), FColor::FromHex("FF0002FF"), for_changeMat));
 		for_changeMat += 0.001f;
 		amount_sphere = (int)(amount_sphere - 1);
 		if (for_changeMat >= 0.998f)
-			changeMat = false;
+			bChangeMat = false;
 	}
 }
 

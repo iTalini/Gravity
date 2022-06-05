@@ -3,9 +3,12 @@
 
 #include "ParentButton.h"
 #include "GravityGameMode.h"
-#include "Kismet/GameplayStatics.h"
+#include "MyCharacter.h"
 #include "Components/TimelineComponent.h"
 #include "Containers/UnrealString.h"
+#include "Net/UnrealNetwork.h"
+#include "Kismet/KismetMathLibrary.h"
+#include "Kismet/GameplayStatics.h"
 #include "Runtime/CoreUObject/Public/UObject/ConstructorHelpers.h"
 
 // Sets default values
@@ -40,27 +43,29 @@ AParentButton::AParentButton()
 		CollisionPart->SetHiddenInGame(true);
 	}
 
-	CF_PressButton = CreateDefaultSubobject<UCurveFloat>(TEXT("/Game/C_ChangeButton.C_ChangeButton"));
+	if (HasAuthority())
+	{
+		CollisionPart->OnComponentBeginOverlap.AddDynamic(this, &AParentButton::OnOverlapBegin);
+		CollisionPart->OnComponentEndOverlap.AddDynamic(this, &AParentButton::OnOverlapEnd);
+	}
+
+	bReadyState = true;
 }
 
-// Called when the game starts or when spawned
-void AParentButton::BeginPlay()
+void AParentButton::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-	Super::BeginPlay();
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	CanPress = false;
+	DOREPLIFETIME(AParentButton, bReadyState);
+}
 
-	Player = Cast<AMyCharacter>(UGameplayStatics::GetPlayerPawn(this, 0));
-
-	CollisionPart->OnComponentBeginOverlap.AddDynamic(this, &AParentButton::OnOverlapBegin);
-	CollisionPart->OnComponentEndOverlap.AddDynamic(this, &AParentButton::OnOverlapEnd);
-
+void AParentButton::InitializeCF_PressButton()
+{
 	if (CF_PressButton)
 	{
 		FOnTimelineFloat TimelineProgress;
 		TimelineProgress.BindUFunction(this, FName("TimelineProgress"));
 		CurveTimeline.AddInterpFloat(CF_PressButton, TimelineProgress);
-		CurveTimeline.SetLooping(true);
 
 		FOnTimelineEventStatic FinishTimeline;
 		FinishTimeline.BindUFunction(this, FName("TimelineFinish"));
@@ -68,58 +73,100 @@ void AParentButton::BeginPlay()
 	}
 }
 
+void AParentButton::OnRep_ButtonReaction()
+{
+	bReadyState = false;
+	CurveTimeline.PlayFromStart();
+}
+
+// Called when the game starts or when spawned
+void AParentButton::BeginPlay()
+{
+	Super::BeginPlay();
+
+	auto richCurve = new FRichCurve();
+	auto key = richCurve->AddKey(0.0f, 75.0f);
+	richCurve->AddKey(0.2f, 25.0f);
+	richCurve->AddKey(1.0f, 75.f);
+	richCurve->SetKeyInterpMode(key, RCIM_Linear);
+
+	CF_PressButton = NewObject<UCurveFloat>();
+
+	CF_PressButton->FloatCurve = *richCurve;
+
+	InitializeCF_PressButton();
+}
+
 void AParentButton::OnOverlapBegin(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp,
-	int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)//Не меняется
+	int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {	
-	if (Player)
+	AMyCharacter* Player = Cast<AMyCharacter>(OtherActor);
+	if ((OtherActor && (OtherActor != this->GetOwner()) && OtherComp && Player))
 	{
-		CanPress = true;
-		Player->Set_ReadyPress(true);
+		Player->SetCurrentButton(this);
 	}
 }
 
 void AParentButton::OnOverlapEnd(UPrimitiveComponent* OverlappedComp, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {	
-	if (Player)
+	AMyCharacter* Player = Cast<AMyCharacter>(OtherActor);
+	if ((OtherActor && (OtherActor != this->GetOwner()) && OtherComp && Player))
 	{
-		Player->Set_ReadyPress(false);
+		Player->SetCurrentButton(nullptr);
 	}
 }
 
-void AParentButton::Shock()//Не меняется
+void AParentButton::TryPressButton()
 {
-	if (Player)
-		Player->Set_WasPress(false);
-	CurveTimeline.PlayFromStart();
-	CanPress = false;
+	if (HasAuthority())
+	{
+		if (bReadyState)
+		{
+			OnRep_ButtonReaction();
+		}
+	}
+	else
+	{
+		Server_TryPressButton();
+	}
 }
 
-void AParentButton::TimelineFinish()//Не меняется
+bool AParentButton::Server_TryPressButton_Validate()
+{
+	return true;
+}
+
+void AParentButton::Server_TryPressButton_Implementation()
+{
+	TryPressButton();
+}
+
+void AParentButton::TimelineFinish()
 {	
-	if (Player)
-		Player->Set_WasPress(false);
+	bReadyState = true;
 }
 
 // Called every frame
 void AParentButton::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+
+	CurveTimeline.TickTimeline(DeltaTime);
 }
 
-void AParentButton::TimelineProgress(float input)//Не меняется
+void AParentButton::TimelineProgress()
 {
-	//UE_LOG(LogTemp, Warning, TEXT("TimelineProgress"));
+	TimelineValue = CurveTimeline.GetPlaybackPosition();
 
-	FVector output = FMath::Lerp(FVector(0.0f, 75.0f, 0.0f), FVector(0.0f, 25.0f, 0.0f), input);
-	MovePart->SetRelativeLocation(output);
+	MovePart->SetRelativeLocation(FVector(0.0f, CF_PressButton->GetFloatValue(TimelineValue), 0.0f));
 }
 
-bool AParentButton::Get_CanPress()//Не меняется
+bool AParentButton::Get_ReadyStat()
 {
-	return(CanPress);
+	return(bReadyState);
 }
 
-void AParentButton::Set_CanPress(bool input)//Не меняется
+void AParentButton::Set_ReadyStat(bool input)
 {
-	CanPress = input;
+	bReadyState = input;
 }

@@ -5,6 +5,7 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "HeadMountedDisplayFunctionLibrary.h"
 #include "Components/CapsuleComponent.h"
+#include "ParentButton.h"
 #include "Kismet/GameplayStatics.h"
 #include "Components/InputComponent.h"
 #include "ScoreSpheres.h"
@@ -62,16 +63,17 @@ AMyCharacter::AMyCharacter()
 
 	Score = 0;
 
-	ReadyForGravState = false;
-	Gravit_line_trace = false;
-	check_grav = false;
+	bReadyForGravState = false;
+	bGravit_line_trace = false;
+	bCheckGrav = false;
 
-	//параметр влияющий на притяжение персонажа
+	CurrentButton = nullptr;
+
 	f_force = 0;
 
 	jumping = false;
 
-
+	bIsUp = false;
 }
 
 // Called when the game starts or when spawned
@@ -80,9 +82,17 @@ void AMyCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	FTimerHandle ExplosionTimer;
-	
-	Set_ReadyPress(false);
 
+	auto richCurve = new FRichCurve();
+	auto key = richCurve->AddKey(0.0f, 0.f);
+	richCurve->AddKey(0.5f, 180.f);
+	richCurve->SetKeyInterpMode(key, RCIM_Linear);
+
+	ChangeGravCurve = NewObject<UCurveFloat>();
+
+	ChangeGravCurve->FloatCurve = *richCurve;
+
+	InitializeGravCurve();
 }
 
 
@@ -93,35 +103,73 @@ void AMyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLife
 	DOREPLIFETIME(AMyCharacter, Score);
 }
 
+void AMyCharacter::SetCurrentButton(AParentButton* NewCurrentButton)
+{
+	CurrentButton = NewCurrentButton;
+}
+
 void AMyCharacter::OnRep_Score()
 {
-//	UE_LOG(LogTemp, Warning, TEXT("OnRep_score"));
 	PrintScore_Implementation();
-/*	if (GetLocalRole() == ROLE_Authority)
-	{
-		const FString ScoreMessege = FString::Printf(TEXT("Person score = %f"), Score);
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Black, ScoreMessege);
-	}*/
-
 }
 
 void AMyCharacter::PrintScore_Implementation()
 {
-	/*AMyHUD* InGameHUD = Cast<AMyHUD>(GetWorld()->GetFirstPlayerController()->GetHUD());
-	if (InGameHUD)
-		InGameHUD->UpdateScore(Score);*/
-		UE_LOG(LogTemp, Warning, TEXT("added to score"));
-		const FString ScoreMessege = FString::Printf(TEXT("My score = %f"), Score);
-		GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Black, ScoreMessege);
-		if (IsLocallyControlled())//???????????????????????????????????????????????????????????????????????
-		{
-			AMyHUD* InGameHUD = Cast<AMyHUD>(GetWorld()->GetFirstPlayerController()->GetHUD());
-			if (InGameHUD)
-				InGameHUD->UpdateScore(Score);
-		}
+	if (IsLocallyControlled())
+	{
+		AMyHUD* InGameHUD = Cast<AMyHUD>(GetWorld()->GetFirstPlayerController()->GetHUD());
+		if (InGameHUD)
+			InGameHUD->UpdateScore(Score);
+	}
 }
 
+void AMyCharacter::Up()
+{
+	OnRep_Set_CheckGrav(true);
+	OnRep_Set_GravLineTrace(true);
+	ChangeGravTimeline.PlayFromStart();
+	bIsUp = true;
+}
 
+void AMyCharacter::Down()
+{
+	OnRep_Set_CheckGrav(false);
+	ChangeGravTimeline.Reverse();
+	bIsUp = false;
+}
+
+void AMyCharacter::OnInteract()
+{
+	if (HasAuthority())
+	{
+		if (CurrentButton && CurrentButton->Get_ReadyStat())
+		{
+			if (bIsUp)
+			{
+				Down();
+			}
+			else
+			{
+				Up();
+			}
+			CurrentButton->TryPressButton();
+		}
+	}
+	else
+	{
+		Server_OnInteract();
+	}
+}
+
+bool AMyCharacter::Server_OnInteract_Validate()
+{
+	return true;
+}
+
+void AMyCharacter::Server_OnInteract_Implementation()
+{
+	OnInteract();
+}
 
 // Called every frame
 void AMyCharacter::Tick(float DeltaTime)
@@ -129,12 +177,14 @@ void AMyCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	ArrowRot();
 
-	if (check_grav)
+	if (bCheckGrav)
 	{
 		FVector force(0.0f, 0.0f, f_force);
 
 		GetCharacterMovement()->AddForce(force);
 	}
+
+	ChangeGravTimeline.TickTimeline(DeltaTime);
 }
 
 //Diraction for walking forward
@@ -161,60 +211,48 @@ FVector AMyCharacter::CalcInputDirRight()
 }
 
 
-
-void AMyCharacter::ControlGrav(float outvalue)
+void AMyCharacter::TimelineProgress()
 {
-	FQuat NewRotate = FQuat(FRotator(GetActorRotation().Pitch, GetActorRotation().Yaw, outvalue));
+	TimelineValue = ChangeGravTimeline.GetPlaybackPosition();
+
+	FQuat NewRotate = FQuat(FRotator(GetActorRotation().Pitch, GetActorRotation().Yaw, ChangeGravCurve->GetFloatValue(TimelineValue)));
 	SetActorRotation(NewRotate);
-	//GetCharacterMovement()->SetGra
 
 	//f_force = 11.0f * -25000.0f;337000
 	SetF_Force(337000.0f);
-	
-	
-	//rotate camera with person
+
+	//rotate character's camera too
 	/*FollowCamera->GetComponentRotation();
-	FQuat NewCameraRotation = FQuat(FRotator(FollowCamera->GetComponentRotation().Pitch, FollowCamera->GetComponentRotation().Yaw, outvalue));
-	
+	FQuat NewCameraRotation = FQuat(FRotator(FollowCamera->GetComponentRotation().Pitch, FollowCamera->GetComponentRotation().Yaw, ChangeGravCurve->GetFloatValue(TimelineValue)));
+
 	FollowCamera->SetWorldRotation(NewCameraRotation);*/
+}
+
+void AMyCharacter::TimelineFinish()
+{
+	OnRep_Set_GravLineTrace(false);
 }
 
 void AMyCharacter::SetF_Force(float input)
 {
-	if (GetLocalRole() == ROLE_Authority)
-		f_force = input;
+	f_force = input;
 }
 
 void AMyCharacter::AddToScore(float add)
 {
-	if (GetLocalRole() == ROLE_Authority)
-		Score += add;
+	Score += add;
+	OnRep_Score();
 }
 
-void AMyCharacter::Set_CheckGrav(bool input)
+void AMyCharacter::OnRep_Set_CheckGrav(bool input)
 {
-	if (GetLocalRole() == ROLE_Authority)
-		check_grav = input;
+	bCheckGrav = input;
 }
 
-void AMyCharacter::Set_GravLineTrace(bool input)
+void AMyCharacter::OnRep_Set_GravLineTrace(bool input)
 {
-	if (GetLocalRole() == ROLE_Authority)
-		ReadyForGravState = input;
+	bReadyForGravState = input;
 }
-
-void AMyCharacter::Set_ReadyPress(bool input)
-{
-	if (GetLocalRole() == ROLE_Authority)
-		ReadyPress = input;
-}
-
-void AMyCharacter::Set_WasPress(bool input)
-{
-	if (GetLocalRole() == ROLE_Authority)
-	{ WasPress = input; }
-}
-
 
 
 void AMyCharacter::ArrowRot()
@@ -249,7 +287,7 @@ void AMyCharacter::MoveRight(float Value)
 		// get right vector 
 		const FVector Direction = FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y);
 		// add movement in that direction
-		if (check_grav)
+		if (bCheckGrav)
 			AddMovementInput(Direction, -Value);
 		else
 			AddMovementInput(Direction, Value);
@@ -259,7 +297,7 @@ void AMyCharacter::MoveRight(float Value)
 
 void AMyCharacter::Jump_()
 {
-	if (check_grav)
+	if (bCheckGrav)
 	{
 		LaunchCharacter(FVector(0.0f, 0.0f, -600.0f), false, false);
 	}
@@ -268,14 +306,14 @@ void AMyCharacter::Jump_()
 		ACharacter::Jump();
 	}
 
-	Set_GravLineTrace(true);
+	OnRep_Set_GravLineTrace(true);
 }
 
 
 void AMyCharacter::Stop_Jumping()
 {
 	ACharacter::StopJumping();
-	Set_GravLineTrace(false);
+	OnRep_Set_GravLineTrace(false);
 }
 
 
@@ -283,6 +321,7 @@ void AMyCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputC
 {
 	// Set up gameplay key bindings
 	check(PlayerInputComponent);
+	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &AMyCharacter::OnInteract);
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AMyCharacter::Jump_);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &AMyCharacter::Stop_Jumping);
 
@@ -340,17 +379,16 @@ void AMyCharacter::LookUpAtRate(float Rate)
 	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
 }
 
-void AMyCharacter::Up()
+void AMyCharacter::InitializeGravCurve()
 {
-	Set_WasPress(true);
-	Set_CheckGrav(true);
-	Set_GravLineTrace(true);
+	if (ChangeGravCurve)
+	{
+		FOnTimelineFloat TimelineProgress;
+		TimelineProgress.BindUFunction(this, FName("TimelineProgress"));
+		ChangeGravTimeline.AddInterpFloat(ChangeGravCurve, TimelineProgress);
+
+		FOnTimelineEventStatic FinishTimeline;
+		FinishTimeline.BindUFunction(this, FName("TimelineFinish"));
+		ChangeGravTimeline.SetTimelineFinishedFunc(FinishTimeline);
+	}
 }
-
-void AMyCharacter::Down()
-{
-	Set_WasPress(true);
-	Set_CheckGrav(false);
-}
-
-

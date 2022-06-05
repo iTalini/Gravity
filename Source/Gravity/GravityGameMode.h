@@ -16,35 +16,23 @@ public:
 	AGravityGameMode();
 
 	UFUNCTION(BlueprintCallable)
-		void OnSphereDestroyed(AScoreSpheres* A_Sphere);
+	void OnSphereDestroyed(AScoreSpheres* A_Sphere);
 	UFUNCTION(BlueprintCallable)
-		int Get_Score();
+	int Get_Score();
 
 	UFUNCTION(BlueprintCallable)
-		void EndGame();
-
-	UFUNCTION(BlueprintCallable)
-		void GameStart();
-	UFUNCTION(BlueprintCallable)
-		void Three();
-	UFUNCTION(BlueprintCallable)
-		void Two();
-	UFUNCTION(BlueprintCallable)
-		void One();
-	UFUNCTION(BlueprintCallable)
-		void Go();
+	void EndGame();
 
 	UFUNCTION()
-		void SpawnOdject();
+	void SpawnOdject();
 
 	FTimerHandle MessageKillTimerHandle;
 
 	UPROPERTY(EditAnywhere, Category = ScoreSpheres)
-		int amount_spheres;
+	int amount_spheres;
 
-	//Spawner
 	UPROPERTY(EditDefaultsOnly, Category = "Spawning")
-		TSubclassOf<AActor>ActorToSpawn;
+	TSubclassOf<AActor>ActorToSpawn;
 
 protected:
 	virtual void BeginPlay() override;

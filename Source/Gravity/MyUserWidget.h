@@ -28,14 +28,14 @@ public:
 	FTimerHandle MessageKillTimerHandle;
 
 	UFUNCTION()
-		void HideMessage();
+	void HideMessage();
 
 	UFUNCTION()
-		void ShowMessage(FString text, float time, FLinearColor textcolor);
+	void ShowMessage(FString text, float time, FLinearColor textcolor);
 
 	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
-		UTextBlock* ScoreBlock = nullptr;
+	UTextBlock* ScoreBlock = nullptr;
 	
 	UPROPERTY(BlueprintReadWrite, meta = (BindWidget))
-		UTextBlock* Message = nullptr;
+	UTextBlock* Message = nullptr;
 };
